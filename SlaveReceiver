@@ -1,0 +1,46 @@
+#include <Wire.h>
+int incomingByte=0;
+
+void setup()
+{
+  Serial.begin(9600);           // start serial for Input
+  Serial1.begin(9600);           // start serial for Output
+  Wire.begin(4);                // join i2c bus with address #4
+  Wire.onReceive(receiveEvent); // register event
+}
+
+void loop()
+{
+
+//  if(Serial.available()){
+    // do something
+  //  incomingByte = Serial.read();
+    //Serial1.print("I");
+  //  Serial1.println(incomingByte,DEC);
+
+//  }
+
+
+  delay(100);
+}
+
+// function that executes whenever data is received from master
+// this function is registered as an event, see setup()
+void receiveEvent(int howMany)
+{
+  while(1 < Wire.available()) // loop through all but the last,
+  {
+    //Wire.parseInt();
+    char c = Wire.read(); // receive byte as a character  
+    Serial.print(c);
+    int x1 = Wire.read();    // receive byte as an integer
+    Serial.println(x1);         // print the integer
+  }
+}
+
+
+
+
+
+
+
