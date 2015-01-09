@@ -1,0 +1,392 @@
+
+//////////////////////////////////
+// Color Sensing LED Connection //
+//////////////////////////////////
+
+// LED 1st pin: Red, 2nd Pin(look in the LED the flat one):GND, 3rd pin:Blue, 4thpin: Green
+int sensorRedPin = 2; // connect with 1st
+int sensorGreenPin = 3; // connect with 4th
+int sensorBluePin = 4;  // connect with 3rd
+
+
+//////////////////////////
+// LCD 1602A Connection //
+//////////////////////////
+/*
+ VSS --> GND
+ VDD --> 5V
+ A --> 5V
+ K --> GND
+ V0 --> middle pin of potmeter
+ RS --> 7
+ RW -->GND
+ E --> 8
+ D4 --> 9
+ D5 --> 10
+ D6 --> 11
+ D7 --> 12
+ */
+
+//////////////////////////////////////
+// Stepper motor 28BYJ48 Connection //
+//////////////////////////////////////
+/*
+ Blue   - 28BYJ48 pin 1 --> 30
+ Pink   - 28BYJ48 pin 2 --> 31 
+ Yellow - 28BYJ48 pin 3 --> 32
+ Orange - 28BYJ48 pin 4 --> 33
+ Red --> 5V
+ Black --> GND
+ */
+
+
+#include <LiquidCrystal.h>
+LiquidCrystal lcd(7, 8, 9, 10, 11 , 12);
+int k;
+
+int powerLedPin = 13;
+int motorPin1 = 30;    // Blue   - 28BYJ48 pin 1
+int motorPin2 = 31;    // Pink   - 28BYJ48 pin 2
+int motorPin3 = 32;    // Yellow - 28BYJ48 pin 3
+int motorPin4 = 33;    // Orange - 28BYJ48 pin 4
+// Red    - 28BYJ48 pin 5 (VCC)
+
+int motorSpeed = 1;  //variable to set stepper speed
+int count = 0;          // count of steps made
+int countsperrev = 512; // number of steps per full revolution
+int lookup[8] = {
+  B01000, B01100, B00100, B00110, B00010, B00011, B00001, B01001};
+
+// Define colour sensor LED pins
+int ledArray[] = {  
+  2,3,4};
+
+// boolean to know if the balance has been set
+boolean whiteBalanceSet = false;
+boolean motorTurnABit =false;
+boolean blackBalanceSet = false;
+//place holders for colour detected
+int red = 0;
+int green = 0;
+int blue = 0;
+//floats to hold colour arrays
+float colourArray[] = {
+  0,0,0};
+float whiteArray[] = {
+  0,0,0};
+float blackArray[] = {
+  0,0,0};
+//place holder for average
+int avgRead;
+
+void setup(){
+  lcd.clear();
+  Serial.begin(9600);
+  lcd.begin(16, 2);
+  //begin serial communication
+
+  pinMode(powerLedPin, OUTPUT);
+  pinMode(motorPin1, OUTPUT);
+  pinMode(motorPin2, OUTPUT);
+  pinMode(motorPin3, OUTPUT);
+  pinMode(motorPin4, OUTPUT);
+
+  //setup the outputs for the colour sensor
+  pinMode(sensorRedPin,OUTPUT);
+  pinMode(sensorGreenPin,OUTPUT);
+  pinMode(sensorBluePin,OUTPUT);
+}
+
+
+void loop(){
+  // if I have not finish collecting color yet
+//  if(count<500){
+    // check white balance first
+    if (whiteBalanceSet == false){
+      checkWhiteBalance();
+    }
+
+    // then turn the plate 1/12 to check black balance 
+    else if(motorTurnABit ==false){
+      if(count < 42 ){ // 1/12 circle
+        motorSpin();
+        count++;
+      } 
+      else {
+        motorTurnABit = true; 
+        /*
+        Serial.print("whiteBalanceSet= ");
+        Serial.println(whiteBalanceSet);
+        Serial.print("motorTurnABit= ");
+        Serial.println(motorTurnABit);
+        Serial.print("blackBalanceSet= ");
+        Serial.println(blackBalanceSet);
+        Serial.print("Count= ");
+        Serial.println(count);
+        */
+      }
+
+    } 
+    // then check the black balance
+    else if (blackBalanceSet == false ){
+      checkBlackBalance();
+    }
+
+    // then start sensing colors
+    else {
+   //   Serial.print(count);
+      checkColour();
+      // printColour();
+
+    }
+
+    sendDataToProcessing('R',colourArray[0]);
+    sendDataToProcessing('G',colourArray[1]);
+    sendDataToProcessing('B',colourArray[2]);
+
+ // } 
+  
+  // If I finish collecting colors, write "Finish" on the screen
+  /*
+  else{
+    lcd.clear();
+    lcd.setCursor(0,0);
+    lcd.write("Finished");
+  }
+  */
+  
+}
+
+
+void checkWhiteBalance(){
+  lcd.setCursor(0,0);
+  lcd.write("Balancing White ");
+
+  delay(5000); 
+  //set white balance
+  //delay for five seconds, this gives us time to get a white sample in front of our sensor
+  //scan the white sample.
+
+  //go through each light, get a reading, set the base reading for each colour red, green, and blue to the white array
+  for(int i = 0;i<=2;i++){
+    digitalWrite(ledArray[i],HIGH);
+    delay(100);
+    getReading(5);          //number is the number of scans to take for average, this whole function is redundant, one reading works just as well.
+    whiteArray[i] = avgRead;
+    digitalWrite(ledArray[i],LOW);
+    delay(100);
+  }
+  whiteBalanceSet= true;
+  /*
+  Serial.print("whiteBalanceSet= ");
+  Serial.println(whiteBalanceSet);
+  Serial.print("motorTurnABit= ");
+  Serial.println(motorTurnABit);
+  Serial.print("blackBalanceSet= ");
+  Serial.println(blackBalanceSet);
+  Serial.print("Count= ");
+  Serial.println(count);
+  */
+}
+
+void checkBlackBalance(){
+  lcd.setCursor(0,0);
+  lcd.write("Balancing Black");
+  //set black balance
+  delay(1000);              //wait for five seconds so we can position our black sample 
+  //go ahead and scan, sets the colour values for red, green, and blue when exposed to black
+  for(int i = 0;i<=2;i++){
+    digitalWrite(ledArray[i],HIGH);
+    delay(100);
+    getReading(5);
+    blackArray[i] = avgRead;
+    //blackArray[i] = analogRead(2);
+    digitalWrite(ledArray[i],LOW);
+    delay(100);
+  }
+  blackBalanceSet = true;
+  /*
+  Serial.print("whiteBalanceSet= ");
+  Serial.println(whiteBalanceSet);
+  Serial.print("motorTurnABit= ");
+  Serial.println(motorTurnABit);
+  Serial.print("blackBalanceSet= ");
+  Serial.println(blackBalanceSet);
+  Serial.print("Count= ");
+  Serial.println(count);
+  */
+
+  delay(1000);     //delay another 5 seconds to let us catch up
+}
+
+
+void checkColour(){
+  motorSpin();
+  count++;
+  lcdShow();
+  for(int i = 0;i<=2;i++){
+    motorSpin();
+    count++;
+    digitalWrite(ledArray[i],HIGH);  //turn or the LED, red, green or blue depending which iteration
+    delay(100);                      //delay to allow CdS to stabalize, they are slow
+    getReading(5);                  //take a reading however many times
+    colourArray[i] = avgRead;        //set the current colour in the array to the average reading
+    float greyDiff = whiteArray[i] - blackArray[i];                    //the highest possible return minus the lowest returns the area for values in between
+    colourArray[i] = (colourArray[i] - blackArray[i])/(greyDiff)*255; //the reading returned minus the lowest value divided by the possible range multiplied by 255 will give us a value roughly between 0-255 representing the value for the current reflectivity(for the colour it is exposed to) of what is being scanned
+    digitalWrite(ledArray[i],LOW);   //turn off the current LED
+    delay(100);
+  }
+
+}
+
+void getReading(int times){
+  int reading;
+  int tally=0;
+  //take the reading however many times was requested and add them up
+  for(int i = 0;i < times;i++){
+    reading = analogRead(0);
+    tally = reading + tally;
+    delay(10);
+  }
+  //calculate the average and set it
+  avgRead = (tally)/times;
+}
+
+//prints the colour in the colour array, in the next step, we will send this to processing to see how good the sensor works.
+void printColour(){
+  Serial.print("R= ");
+  Serial.println(int(colourArray[0]));
+  Serial.print("G= ");
+  Serial.println(int(colourArray[1]));
+  Serial.print("B= ");
+  Serial.println(int(colourArray[2]));
+  //delay(2000);
+}
+
+void sendDataToProcessing(char symbol, int data){
+  Serial.print(symbol);                // symbol prefix tells Processing what type of data is coming
+  Serial.println(data);                // the data to send culminating in a carriage return
+
+}
+
+
+void setOutput(int out)
+{
+  digitalWrite(motorPin1, bitRead(lookup[out], 0));
+  digitalWrite(motorPin2, bitRead(lookup[out], 1));
+  digitalWrite(motorPin3, bitRead(lookup[out], 2));
+  digitalWrite(motorPin4, bitRead(lookup[out], 3));
+}
+
+void motorSpin(){
+  for(int i = 7; i >= 0; i--)
+  {
+    setOutput(i);
+    delay(motorSpeed);
+  }
+}
+
+void lcdShow(){
+  lcd.clear();
+  lcd.setCursor(0,0); // (x=0,y=1)
+  lcd.write("Collecting Color");
+
+  lcd.setCursor(0,1);  // (x=0,y=1)
+  lcd.write("R");
+  lcd.setCursor(1,1);
+  lcd.print(int(colourArray[0]));
+
+
+  lcd.setCursor(5,1);
+  lcd.write("G"); 
+  lcd.setCursor(6,1);
+  lcd.print(int(colourArray[1]));
+
+
+  lcd.setCursor(10,1);
+  lcd.write("B");
+  lcd.setCursor(11,1);
+  lcd.print(int(colourArray[2]));
+
+}
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
