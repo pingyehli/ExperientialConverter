@@ -1,0 +1,199 @@
+// Servo motors
+// Orange to 7, Red to 5V, Brown to GND
+#include <Servo.h>
+Servo myBServo;
+Servo myMServo;
+Servo mySServo;
+
+// RGB led 1(up)
+// 1st:R, 2nd:GND, 3rd:G, 4th:B
+int red1Pin = 2;  // connect with 1st
+int green1Pin = 3; // connect with 3rd
+int blue1Pin = 4; // connect with 4th
+
+// RGB led 2(Middle)
+// 1st:R, 2nd:GND, 3rd:G, 4th:B
+int red2Pin = 11;  // connect with 1st
+int green2Pin = 12; // connect with 3rd
+int blue2Pin = 13; // connect with 4th
+
+// RGB led 3(down)
+// 1st:R, 2nd:GND, 3rd:G, 4th:B
+int red3Pin = 8;  // connect with 1st
+int green3Pin = 9; // connect with 3rd
+int blue3Pin = 10; // connect with 4th
+
+
+
+int R;
+int G; 
+int B;
+
+int rPos;
+int gPos;
+int bPos;
+
+#include <Wire.h>
+int x1;
+int x2;
+int x3;
+
+void setup(){
+  myBServo.attach(7);
+  myMServo.attach(6);
+  mySServo.attach(5);
+  //declare the motor pins as outputs
+  pinMode(red1Pin, OUTPUT);
+  pinMode(green1Pin, OUTPUT);
+  pinMode(blue1Pin, OUTPUT);  
+  pinMode(red2Pin, OUTPUT);
+  pinMode(green2Pin, OUTPUT);
+  pinMode(blue2Pin, OUTPUT); 
+  pinMode(red3Pin, OUTPUT);
+  pinMode(green3Pin, OUTPUT);
+  pinMode(blue3Pin, OUTPUT); 
+  Serial.begin(9600);
+  Wire.begin(4);                // join i2c bus with address #4
+  Wire.onReceive(receiveEvent); // register event
+}
+
+void loop(){
+  R= random(255);
+  G= random(255);
+  B= random(255);
+  // R= int(x1);
+  // G= int(x2);
+  // B= int(x3);
+
+  rPos = map(R,0,255,30,150);  // 30-150
+  gPos = map(G,0,255,10,140);  // 0-120
+  bPos = map(B,0,255,30,150);
+
+
+  setColor(R,G,B);
+  myBServo.write(rPos);
+  myMServo.write(gPos);
+  mySServo.write(bPos);
+
+
+
+
+  Serial.print("R");
+  Serial.println(rPos);
+  Serial.print("G");
+  Serial.println(gPos);
+  Serial.print("B");
+  Serial.println(bPos);
+
+  delay(800);     // for real data, delay(10)
+
+}
+
+
+//////////////////////////////////////////////////////////////////////////////
+//set pins to ULN2003 high in sequence from 1 to 4
+//delay "motorSpeed" between each pin setting (to determine speed)
+
+
+void setColor(int red, int green, int blue)
+{
+  analogWrite(red1Pin, red);
+  analogWrite(green1Pin, green);
+  analogWrite(blue1Pin, blue);  
+  analogWrite(red2Pin, red);
+  analogWrite(green2Pin, green);
+  analogWrite(blue2Pin, blue); 
+  analogWrite(red3Pin, red);
+  analogWrite(green3Pin, green);
+  analogWrite(blue3Pin, blue); 
+
+}
+
+void receiveEvent(int howMany)
+{
+  while(1 < Wire.available()) // loop through all but the last,
+  {
+    //Wire.parseInt();
+    char c1 = Wire.read(); // receive byte as a character  
+    //Serial.print(c1);
+    x1 = Wire.read();    // receive byte as an integer
+    // Serial.println(x1);         // print the integer
+
+    char c2 = Wire.read(); 
+    //Serial.print(c2);
+    x2 = Wire.read();    // receive byte as an integer
+    //Serial.println(x2);         // print the integer
+
+    char c3 = Wire.read(); 
+    //Serial.print(c3);
+    x3 = Wire.read();    // receive byte as an integer
+    // Serial.println(x3);         // print the integer
+
+  }
+}
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
